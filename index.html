@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BookNest - RentBooks</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    header {
+      background: #222;
+      color: white;
+      padding: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    nav {
+      display: flex;
+      gap: 20px;
+    }
+
+    nav a {
+      color: white;
+      text-decoration: none;
+    }
+
+    .menu-toggle {
+      display: none;
+      flex-direction: column;
+    }
+
+    .menu-toggle span {
+      background: white;
+      height: 3px;
+      margin: 4px 0;
+      width: 25px;
+    }
+
+    .container {
+      padding: 20px;
+    }
+
+    .books {
+      display: grid;
+      grid-template-columns: repeat(8, minmax(130px, 1fr));
+      gap: 20px;
+    }
+
+    .book {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: center;
+    }
+
+    .book img {
+      width: 100%;
+      height: auto;
+    }
+
+    .cart {
+      position: fixed;
+      top: 60px;
+      right: 20px;
+      width: 250px;
+      background: #f9f9f9;
+      border: 1px solid #ccc;
+      padding: 10px;
+    }
+
+    @media (max-width: 450px) {
+      nav {
+        display: none;
+        flex-direction: column;
+        background: #333;
+        padding: 10px;
+      }
+
+      nav.active {
+        display: flex;
+      }
+
+      .menu-toggle {
+        display: flex;
+      }
+
+      .books {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .cart {
+        position: static;
+        width: 100%;
+        margin-top: 20px;
+      }
+    }
+
+   
+    #modal {
+      display: none;
+      position: fixed;
+      z-index: 999;
+      left: 0;
+      top: 0;
+      width:1280px;
+      height: 720px;
+      background-color: rgba(0,0,0,0.8);
+      justify-content: center;
+      align-items: center;
+    }
+
+    #modal img {
+      max-width: 1000px;
+      max-height: 800px;
+      border: 5px solid white;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>BookNest</h1>
+    <div class="menu-toggle" onclick="toggleMenu()">
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+    <nav id="navbar">
+      <a href="#">Home</a>
+      <a href="#">Browse</a>
+      <a href="#">Cart (<span id="cart-count">0</span>)</a>
+    </nav>
+  </header>
+
+  <div class="container">
+    <h2>Available Books</h2>
+    <div class="books" id="books-container"></div>
+
+    <div class="cart" id="cart">
+      <h3>Your Rental Cart</h3>
+      <ul id="cart-items"></ul>
+      <p><strong>Total: $<span id="cart-total">0.00</span></strong></p>
+      <button>Confirm Rental</button>
+    </div>
+  </div>
+
+  
+  <div id="modal" onclick="closeModal()">
+    <img id="modal-img" src="" alt="Enlarged book">
+  </div>
+
+  <script>
+    const books = [
+      { title: "1984", price: 1.50, image: "assets/sample-books/book-1984.jpg" },
+      { title: "The Hobbit", price: 2.00, image: "assets/sample-books/book-hobbit.jpg" },
+      { title: "To Kill a Mockingbird", price: 2.50, image: "assets/sample-books/book-mockingbird.jpg" },
+      { title: "Pride and Prejudice", price: 3.00, image: "assets/sample-books/book-pride.jpg" },
+      { title: "Moby-Dick", price: 1.00, image: "assets/sample-books/book-mobydick.jpg" },
+      { title: "War and Peace", price: 1.50, image: "assets/sample-books/book-warpeace.jpg" },
+      { title: "The Great Gatsby", price: 2.00, image: "assets/sample-books/book-gatsby.jpg" },
+      { title: "The Catcher in the Rye", price: 2.50, image: "assets/sample-books/book-catcher.jpg" },
+      { title: "Brave New World", price: 1.50, image: "assets/sample-books/book-bravenew.jpg" },
+      { title: "Jane Eyre", price: 1.80, image: "assets/sample-books/book-janeeyre.jpg" },
+      { title: "Crime and Punishment", price: 2.00, image: "assets/sample-books/book-crime.jpg" },
+      { title: "Anna Karenina", price: 1.90, image: "assets/sample-books/book-anna.jpg" },
+      { title: "The Alchemist", price: 2.20, image: "assets/sample-books/book-alchemist.jpg" },
+      { title: "The Book Thief", price: 1.70, image: "assets/sample-books/book-warpeace.jpg" },
+      { title: "Don Quixote", price: 2.10, image: "assets/sample-books/book-donquixote.jpg" }
+    ];
+
+    let cart = {};
+    let total = 0;
+
+    function renderBooks() {
+      const container = document.getElementById("books-container");
+      books.forEach((book, i) => {
+        const div = document.createElement("div");
+        div.className = "book";
+        div.innerHTML = `
+          <img src="${book.image}" onclick="openModal('${book.image}')">
+          <p><strong>${book.title}</strong><br>$${book.price} / day</p>
+          <button onclick="addBook(${i})">Rent</button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function addBook(i) {
+      const book = books[i];
+
+      if (cart[book.title]) {
+        cart[book.title].quantity += 1;
+        cart[book.title].totalPrice += book.price;
+      } else {
+        cart[book.title] = {
+          quantity: 1,
+          price: book.price,
+          totalPrice: book.price
+        };
+      }
+
+      total += book.price;
+      updateCart();
+    }
+
+    function updateCart() {
+      const list = document.getElementById("cart-items");
+      const count = document.getElementById("cart-count");
+      const totalBox = document.getElementById("cart-total");
+
+      list.innerHTML = "";
+
+      let itemCount = 0;
+      for (const title in cart) {
+        const item = cart[title];
+        itemCount += item.quantity;
+
+        const li = document.createElement("li");
+        li.textContent = `${title} (${item.quantity}x) - $${item.totalPrice}`;
+        list.appendChild(li);
+      }
+
+      count.textContent = itemCount;
+      totalBox.textContent = total;
+    }
+
+    function openModal(src) {
+      document.getElementById("modal-img").src = src;
+      document.getElementById("modal").style.display = "flex";
+    }
+
+  
+    function closeModal() {
+      document.getElementById("modal").style.display = "none";
+    }
+
+   
+    function toggleMenu() {
+      const nav = document.getElementById("navbar");
+      nav.classList.toggle("active");
+    }
+
+
+    renderBooks();
+  </script>
+</body>
+</html>
